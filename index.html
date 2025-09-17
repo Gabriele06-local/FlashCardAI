@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcard Generator</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Flashcard Generator</h1>
+            <p>Genera flashcard intelligenti dal tuo testo o PDF</p>
+            
+            <!-- Sezione Autenticazione -->
+            <div id="authSection" class="auth-section">
+                <div id="loginForm" class="auth-form">
+                    <h3>Accedi per salvare le tue flashcard</h3>
+                    <div class="auth-inputs">
+                        <input type="email" id="emailInput" placeholder="Email" />
+                        <input type="password" id="passwordInput" placeholder="Password" />
+                        <button id="loginBtn" class="btn-primary">Accedi</button>
+                        <button id="signupBtn" class="btn-secondary">Registrati</button>
+                    </div>
+                </div>
+                
+                <div id="userInfo" class="user-info hidden">
+                    <div class="user-details">
+                        <span id="userEmail"></span>
+                        <div class="user-stats">
+                            <span id="userStats"></span>
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <button id="analyticsBtn" class="btn-secondary">📊 Analytics</button>
+                        <button id="logoutBtn" class="btn-secondary">Esci</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Sezione Input -->
+            <section class="input-section">
+                <div class="input-group">
+                    <label for="textInput">Testo da elaborare:</label>
+                    <textarea 
+                        id="textInput" 
+                        placeholder="Incolla qui il testo da cui generare le flashcard..."
+                        rows="6"
+                    ></textarea>
+                </div>
+
+                <div class="file-upload-group">
+                    <label for="pdfInput">Oppure carica un PDF:</label>
+                    <div class="file-upload">
+                        <input type="file" id="pdfInput" accept=".pdf" />
+                        <label for="pdfInput" class="file-upload-label">
+                            <span class="upload-icon">📄</span>
+                            <span>Scegli un file PDF</span>
+                        </label>
+                    </div>
+                    <div id="pdfInfo" class="pdf-info hidden"></div>
+                </div>
+
+                <div class="api-section">
+                    <div class="api-toggle">
+                        <label class="toggle-label">
+                            <input type="radio" name="apiChoice" value="default" checked>
+                            <span class="toggle-text">Usa API Gemini Flash di default</span>
+                        </label>
+                        <label class="toggle-label">
+                            <input type="radio" name="apiChoice" value="custom">
+                            <span class="toggle-text">Usa la mia API</span>
+                        </label>
+                    </div>
+
+                    <div id="customApiSection" class="custom-api-section hidden">
+                        <label for="apiKeyInput">La tua API Key:</label>
+                        <input 
+                            type="password" 
+                            id="apiKeyInput" 
+                            placeholder="Inserisci la tua API Key..."
+                        />
+                        <button id="saveApiKey" class="btn-secondary">Salva API Key</button>
+                    </div>
+                </div>
+
+                <button id="generateBtn" class="btn-primary">
+                    <span class="btn-text">Genera Flashcard</span>
+                    <span class="loading-spinner hidden"></span>
+                </button>
+            </section>
+
+            <!-- Sezione Flashcard -->
+            <section id="flashcardSection" class="flashcard-section hidden">
+                <div class="flashcard-header">
+                    <h2>Le tue Flashcard</h2>
+                    <div class="flashcard-controls">
+                        <button id="saveSetBtn" class="btn-secondary">💾 Salva Set</button>
+                        <button id="exportBtn" class="btn-secondary">📥 Esporta</button>
+                        <button id="copyBtn" class="btn-secondary">📋 Copia</button>
+                    </div>
+                </div>
+
+                <div class="flashcard-container">
+                    <div id="flashcardCounter" class="flashcard-counter">
+                        <span id="currentCard">1</span> di <span id="totalCards">0</span>
+                    </div>
+
+                    <div id="flashcard" class="flashcard">
+                        <div class="flashcard-content">
+                            <div class="question-section">
+                                <h3>Domanda</h3>
+                                <p id="questionText">Carica il contenuto per iniziare...</p>
+                            </div>
+                            
+                            <button id="revealAnswerBtn" class="reveal-answer-btn">
+                                👁️ Mostra Risposta
+                            </button>
+                            
+                            <div id="answerSection" class="answer-section hidden">
+                                <h3>Risposta</h3>
+                                <p id="answerText">Le risposte appariranno qui...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flashcard-navigation">
+                        <button id="prevBtn" class="nav-btn" disabled>
+                            <span>←</span> Precedente
+                        </button>
+                        <button id="nextBtn" class="nav-btn">
+                            Successiva <span>→</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sezione Analytics Dashboard -->
+            <section id="analyticsSection" class="analytics-section hidden">
+                <div class="analytics-header">
+                    <h2>📊 Dashboard Analytics</h2>
+                    <div class="analytics-controls">
+                        <select id="analyticsTimeframe" class="timeframe-select">
+                            <option value="7">Ultimi 7 giorni</option>
+                            <option value="30" selected>Ultimi 30 giorni</option>
+                            <option value="90">Ultimi 90 giorni</option>
+                        </select>
+                        <button id="refreshAnalytics" class="btn-secondary">🔄 Aggiorna</button>
+                    </div>
+                </div>
+
+                <!-- Statistiche Principali -->
+                <div class="analytics-stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📚</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalSets">0</div>
+                            <div class="stat-label">Set Totali</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalCards">0</div>
+                            <div class="stat-label">Flashcard</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="studyStreak">0</div>
+                            <div class="stat-label">Giorni Streak</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="accuracyRate">0%</div>
+                            <div class="stat-label">Precisione</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalStudyTime">0h</div>
+                            <div class="stat-label">Tempo Studio</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="cardsDueToday">0</div>
+                            <div class="stat-label">Da Ripassare</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grafici -->
+                <div class="analytics-charts">
+                    <div class="chart-container">
+                        <h3>📈 Progresso Settimanale</h3>
+                        <div id="weeklyProgressChart" class="chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h3>🎯 Accuratezza per Giorno</h3>
+                        <div id="accuracyChart" class="chart"></div>
+                    </div>
+                </div>
+
+                <!-- Insights e Raccomandazioni -->
+                <div class="analytics-insights">
+                    <h3>💡 Insights e Raccomandazioni</h3>
+                    <div id="insightsList" class="insights-list">
+                        <!-- Gli insights verranno generati dinamicamente -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sezione Modalità Studio -->
+            <section id="studySection" class="study-section hidden">
+                <div class="study-header">
+                    <h2>🎯 Modalità Studio</h2>
+                    <p>Scegli la modalità di studio che preferisci per massimizzare l'apprendimento</p>
+                </div>
+                
+                <!-- Selezione Modalità Studio -->
+                <div class="study-mode-selector">
+                    <h3>Scegli Modalità Studio</h3>
+                    <div class="study-modes-grid">
+                        <div class="study-mode-card" data-mode="spaced">
+                            <div class="mode-icon">🧠</div>
+                            <h4>Ripetizione Spaziata</h4>
+                            <p>Algoritmo intelligente per ottimizzare i tempi di ripasso</p>
+                            <div class="mode-stats">
+                                <span class="stat">📊 Analytics</span>
+                                <span class="stat">⏰ Ottimizzato</span>
+                            </div>
+                        </div>
+                        
+                        <div class="study-mode-card" data-mode="quiz">
+                            <div class="mode-icon">❓</div>
+                            <h4>Quiz Mode</h4>
+                            <p>Domande multiple choice per testare la conoscenza</p>
+                            <div class="mode-stats">
+                                <span class="stat">🎯 Precisione</span>
+                                <span class="stat">⚡ Veloce</span>
+                            </div>
+                        </div>
+                        
+                        <div class="study-mode-card" data-mode="matching">
+                            <div class="mode-icon">🔗</div>
+                            <h4>Matching</h4>
+                            <p>Collega domande e risposte per rafforzare le connessioni</p>
+                            <div class="mode-stats">
+                                <span class="stat">🔗 Associazione</span>
+                                <span class="stat">🎮 Interattivo</span>
+                            </div>
+                        </div>
+                        
+                        <div class="study-mode-card" data-mode="memory">
+                            <div class="mode-icon">🎴</div>
+                            <h4>Memory Game</h4>
+                            <p>Gioco di concentrazione per memorizzazione visiva</p>
+                            <div class="mode-stats">
+                                <span class="stat">👁️ Visivo</span>
+                                <span class="stat">🧩 Divertente</span>
+                            </div>
+                        </div>
+                        
+                        <div class="study-mode-card" data-mode="speed">
+                            <div class="mode-icon">⚡</div>
+                            <h4>Speed Review</h4>
+                            <p>Ripasso veloce per consolidare la memoria</p>
+                            <div class="mode-stats">
+                                <span class="stat">⚡ Veloce</span>
+                                <span class="stat">🔄 Consolidamento</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="study-controls">
+                    <button id="startStudyBtn" class="btn-primary hidden">
+                        <span class="btn-icon">▶️</span>
+                        Inizia Studio
+                    </button>
+                    <button id="stopStudyBtn" class="btn-secondary hidden">
+                        <span class="btn-icon">⏹️</span>
+                        Termina Studio
+                    </button>
+                </div>
+
+                <div id="studyStats" class="study-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Carte da ripassare:</span>
+                        <span id="cardsDue" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Studiate oggi:</span>
+                        <span id="cardsStudied" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Modalità:</span>
+                        <span id="currentStudyMode" class="stat-value">-</span>
+                    </div>
+                </div>
+
+                <!-- Carta Studio Standard (Ripetizione Spaziata) -->
+                <div id="studyCard" class="study-card hidden">
+                    <div class="study-progress">
+                        <div class="progress-bar">
+                            <div id="studyProgress" class="progress-fill"></div>
+                        </div>
+                        <span id="studyProgressText">1 di 10</span>
+                    </div>
+
+                    <div class="study-card-content">
+                        <div class="study-question">
+                            <h3>Domanda</h3>
+                            <p id="studyQuestionText"></p>
+                        </div>
+                        
+                        <button id="studyRevealBtn" class="btn-primary">Mostra Risposta</button>
+                        
+                        <div id="studyAnswer" class="study-answer hidden">
+                            <h3>Risposta</h3>
+                            <p id="studyAnswerText"></p>
+                            
+                            <div class="study-rating">
+                                <h4>Come ti è andata?</h4>
+                                <div class="rating-buttons">
+                                    <button class="rating-btn" data-quality="1">😞 Difficile</button>
+                                    <button class="rating-btn" data-quality="2">😐 Normale</button>
+                                    <button class="rating-btn" data-quality="3">😊 Facile</button>
+                                    <button class="rating-btn" data-quality="4">😄 Molto Facile</button>
+                                    <button class="rating-btn" data-quality="5">🤩 Perfetto</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quiz Mode -->
+                <div id="quizMode" class="quiz-mode hidden">
+                    <div class="quiz-progress">
+                        <div class="progress-bar">
+                            <div id="quizProgress" class="progress-fill"></div>
+                        </div>
+                        <span id="quizProgressText">1 di 10</span>
+                    </div>
+                    
+                    <div class="quiz-question">
+                        <h3 id="quizQuestionText">Domanda qui...</h3>
+                    </div>
+                    
+                    <div class="quiz-options" id="quizOptions">
+                        <!-- Opzioni multiple choice -->
+                    </div>
+                    
+                    <div class="quiz-feedback hidden" id="quizFeedback">
+                        <div class="feedback-content">
+                            <div class="feedback-icon" id="feedbackIcon">✅</div>
+                            <div class="feedback-text" id="feedbackText">Corretto!</div>
+                            <div class="correct-answer" id="correctAnswer">Risposta corretta: ...</div>
+                        </div>
+                        <button id="nextQuizBtn" class="btn-primary">Prossima Domanda</button>
+                    </div>
+                </div>
+                
+                <!-- Matching Mode -->
+                <div id="matchingMode" class="matching-mode hidden">
+                    <div class="matching-progress">
+                        <div class="progress-bar">
+                            <div id="matchingProgress" class="progress-fill"></div>
+                        </div>
+                        <span id="matchingProgressText">0 di 10</span>
+                    </div>
+                    
+                    <div class="matching-grid" id="matchingGrid">
+                        <!-- Griglia per matching -->
+                    </div>
+                    
+                    <div class="matching-feedback" id="matchingFeedback">
+                        <div class="feedback-content">
+                            <div class="feedback-icon" id="matchingFeedbackIcon">✅</div>
+                            <div class="feedback-text" id="matchingFeedbackText">Perfetto!</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Memory Mode -->
+                <div id="memoryMode" class="memory-mode hidden">
+                    <div class="memory-progress">
+                        <div class="progress-bar">
+                            <div id="memoryProgress" class="progress-fill"></div>
+                        </div>
+                        <span id="memoryProgressText">0 di 10</span>
+                    </div>
+                    
+                    <div class="memory-grid" id="memoryGrid">
+                        <!-- Griglia per memory game -->
+                    </div>
+                    
+                    <div class="memory-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Tentativi:</span>
+                            <span id="memoryAttempts" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Coppie trovate:</span>
+                            <span id="memoryPairs" class="stat-value">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Speed Review Mode -->
+                <div id="speedMode" class="speed-mode hidden">
+                    <div class="speed-progress">
+                        <div class="progress-bar">
+                            <div id="speedProgress" class="progress-fill"></div>
+                        </div>
+                        <span id="speedProgressText">1 di 10</span>
+                    </div>
+                    
+                    <div class="speed-timer">
+                        <div class="timer-circle">
+                            <span id="speedTimer">5</span>
+                        </div>
+                    </div>
+                    
+                    <div class="speed-card">
+                        <div class="speed-question" id="speedQuestionText">
+                            Domanda qui...
+                        </div>
+                        <div class="speed-answer hidden" id="speedAnswerText">
+                            Risposta qui...
+                        </div>
+                    </div>
+                    
+                    <div class="speed-controls">
+                        <button id="revealSpeedAnswer" class="btn-primary">Mostra Risposta</button>
+                        <button id="speedNext" class="btn-secondary hidden">Prossima</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sezione Flashcard Salvate -->
+            <section id="savedFlashcardsSection" class="saved-flashcards-section">
+                <div class="saved-flashcards-header">
+                    <h2>📚 Flashcard Salvate</h2>
+                    <div class="saved-controls">
+                        <button id="refreshSetsBtn" class="btn-secondary">🔄 Aggiorna</button>
+                        <button id="clearAllBtn" class="btn-secondary">🗑️ Cancella Tutto</button>
+                    </div>
+                </div>
+
+                <div id="savedSetsGrid" class="saved-sets-grid">
+                    <!-- Le flashcard salvate verranno caricate qui dinamicamente -->
+                </div>
+
+                <div id="emptySavedSets" class="empty-saved-sets">
+                    <h3>Nessuna flashcard salvata</h3>
+                    <p>Genera delle flashcard e salvalle per vederle qui!</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Modal per esportazione -->
+        <div id="exportModal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Esporta Flashcard</h3>
+                <div class="export-options">
+                    <button id="exportJson" class="btn-secondary">📄 JSON</button>
+                    <button id="exportCsv" class="btn-secondary">📊 CSV</button>
+                </div>
+                <button id="closeModal" class="btn-primary">Chiudi</button>
+            </div>
+        </div>
+
+        <!-- Modal per salvare set -->
+        <div id="saveSetModal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Salva Set di Flashcard</h3>
+                <div class="input-group">
+                    <label for="setNameInput">Nome del set:</label>
+                    <input 
+                        type="text" 
+                        id="setNameInput" 
+                        placeholder="Es: Storia dell'arte, Matematica, etc."
+                        maxlength="50"
+                    />
+                </div>
+                <div class="modal-actions">
+                    <button id="confirmSaveBtn" class="btn-primary">💾 Salva</button>
+                    <button id="cancelSaveBtn" class="btn-secondary">Annulla</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script type="module" src="main.js"></script>
+</body>
+</html> 

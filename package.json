@@ -1,0 +1,32 @@
+{
+  "name": "flashcard-generator",
+  "version": "2.0.0",
+  "description": "Generatore di flashcard intelligenti con Supabase e AI",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node test-integration.js",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:deploy": "supabase functions deploy"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "recharts": "^2.8.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "supabase": "^1.200.0"
+  },
+  "keywords": [
+    "flashcard",
+    "ai",
+    "supabase",
+    "education",
+    "spaced-repetition"
+  ],
+  "author": "Gabriele",
+  "license": "MIT"
+}

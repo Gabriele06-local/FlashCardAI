@@ -3,11 +3,11 @@
   publish = "dist"
   
   # Comando di build
-  command = "npm ci && npm run build"
+  command = "npm install && npm run build"
 
 [build.environment]
-  # Versione di Node.js
-  NODE_VERSION = "18"
+  # Versione di Node.js (LTS stabile per Vite)
+  NODE_VERSION = "20"
 
 # Redirect per SPA (Single Page Application)
 [[redirects]]

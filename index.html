@@ -113,19 +113,33 @@
                     </div>
 
                     <div id="flashcard" class="flashcard">
-                        <div class="flashcard-content">
-                            <div class="question-section">
-                                <h3>Domanda</h3>
-                                <p id="questionText">Carica il contenuto per iniziare...</p>
+                        <div class="flashcard-inner">
+                            <!-- Fronte della flashcard -->
+                            <div class="flashcard-front">
+                                <div class="flashcard-content">
+                                    <div class="question-section">
+                                        <h3>Domanda</h3>
+                                        <p id="questionText">Carica il contenuto per iniziare...</p>
+                                    </div>
+                                    
+                                    <button id="revealAnswerBtn" class="reveal-answer-btn">
+                                        👁️ Mostra Risposta
+                                    </button>
+                                </div>
                             </div>
                             
-                            <button id="revealAnswerBtn" class="reveal-answer-btn">
-                                👁️ Mostra Risposta
-                            </button>
-                            
-                            <div id="answerSection" class="answer-section hidden">
-                                <h3>Risposta</h3>
-                                <p id="answerText">Le risposte appariranno qui...</p>
+                            <!-- Retro della flashcard -->
+                            <div class="flashcard-back">
+                                <div class="flashcard-content">
+                                    <div class="answer-section">
+                                        <h3>Risposta</h3>
+                                        <p id="answerText">Le risposte appariranno qui...</p>
+                                    </div>
+                                    
+                                    <button id="hideAnswerBtn" class="reveal-answer-btn">
+                                        🔄 Torna alla Domanda
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

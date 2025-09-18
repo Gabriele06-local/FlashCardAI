@@ -78,6 +78,7 @@ const elements = {
     answerText: document.getElementById('answerText'),
     answerSection: document.getElementById('answerSection'),
     revealAnswerBtn: document.getElementById('revealAnswerBtn'),
+    hideAnswerBtn: document.getElementById('hideAnswerBtn'),
     prevBtn: document.getElementById('prevBtn'),
     nextBtn: document.getElementById('nextBtn'),
     saveSetBtn: document.getElementById('saveSetBtn'),
@@ -224,6 +225,7 @@ function setupEventListeners() {
     
     // Rivelare risposta
     elements.revealAnswerBtn.addEventListener('click', toggleAnswer);
+    elements.hideAnswerBtn.addEventListener('click', hideAnswer);
     
     // Navigazione flashcard
     elements.prevBtn.addEventListener('click', showPreviousCard);
@@ -692,30 +694,33 @@ function updateFlashcardDisplay() {
     elements.currentCard.textContent = appState.currentIndex + 1;
     elements.totalCards.textContent = appState.flashcards.length;
     
-    // Reset stato risposta
+    // Reset stato risposta e animazione flip
     appState.answerRevealed = false;
-    elements.answerSection.classList.add('hidden');
-    elements.revealAnswerBtn.classList.remove('hidden');
-    elements.revealAnswerBtn.textContent = '👁️ Mostra Risposta';
+    const flashcard = document.getElementById('flashcard');
+    flashcard.classList.remove('flipped');
     
     // Aggiorna stato bottoni navigazione
     elements.prevBtn.disabled = appState.currentIndex === 0;
     elements.nextBtn.disabled = appState.currentIndex === appState.flashcards.length - 1;
 }
 
-// Toggle risposta
+// Toggle risposta con animazione flip
 function toggleAnswer() {
     appState.answerRevealed = !appState.answerRevealed;
+    const flashcard = document.getElementById('flashcard');
     
     if (appState.answerRevealed) {
-        elements.answerSection.classList.remove('hidden');
-        elements.answerSection.classList.add('revealed');
-        elements.revealAnswerBtn.textContent = '🙈 Nascondi Risposta';
+        flashcard.classList.add('flipped');
     } else {
-        elements.answerSection.classList.add('hidden');
-        elements.answerSection.classList.remove('revealed');
-        elements.revealAnswerBtn.textContent = '👁️ Mostra Risposta';
+        flashcard.classList.remove('flipped');
     }
+}
+
+// Funzione per nascondere risposta (pulsante sul retro)
+function hideAnswer() {
+    appState.answerRevealed = false;
+    const flashcard = document.getElementById('flashcard');
+    flashcard.classList.remove('flipped');
 }
 
 // Mostra flashcard precedente

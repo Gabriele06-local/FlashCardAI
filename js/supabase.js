@@ -492,20 +492,7 @@ export class AnalyticsManager {
     return { data, error }
   }
 
-  static async recordStudySession(sessionData) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Utente non autenticato')
-
-    const { data, error } = await supabase
-      .from('study_sessions_detailed')
-      .insert({
-        user_id: user.id,
-        ...sessionData
-      })
-      .select()
-
-    return { data, error }
-  }
+  // recordStudySession rimossa - usa SpacedRepetition.recordStudySession invece
 
   static async updateDailyAnalytics(cardsStudied, correctAnswers, studyTimeMinutes) {
     const { data: { user } } = await supabase.auth.getUser()

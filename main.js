@@ -8,11 +8,7 @@ import {
     handleSupabaseError 
 } from './js/supabase.js';
 
-// Importa Recharts per grafici
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
-
-// Esponi le librerie globalmente per compatibilità
-window.Recharts = { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar };
+// Grafici gestiti con CSS semplici - Recharts rimosso per ridurre bundle size
 
 // Configurazione globale
 const CONFIG = {
@@ -313,6 +309,18 @@ function showLoginForm() {
     elements.loginForm.classList.remove('hidden');
     elements.userInfo.classList.add('hidden');
     appState.user = null;
+    
+    // Ripristina sezione API per utenti non loggati
+    const apiSection = document.querySelector('.api-section');
+    if (apiSection) {
+        apiSection.style.opacity = '1';
+        apiSection.style.pointerEvents = 'auto';
+        // Rimuovi tooltip se presente
+        const tooltip = apiSection.querySelector('.user-logged-tooltip');
+        if (tooltip) {
+            tooltip.remove();
+        }
+    }
 }
 
 function showUserInfo() {
@@ -320,6 +328,21 @@ function showUserInfo() {
     elements.userInfo.classList.remove('hidden');
     elements.userEmail.textContent = appState.user.email;
     updateUserStats();
+    
+    // Nascondi sezione API personalizzata per utenti loggati
+    const apiSection = document.querySelector('.api-section');
+    if (apiSection) {
+        apiSection.style.opacity = '0.6';
+        apiSection.style.pointerEvents = 'none';
+        // Aggiungi tooltip informativo
+        if (!apiSection.querySelector('.user-logged-tooltip')) {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'user-logged-tooltip';
+            tooltip.innerHTML = '💡 Gli utenti loggati usano il sistema sicuro integrato';
+            tooltip.style.cssText = 'font-size: 12px; color: #666; margin-top: 5px; text-align: center;';
+            apiSection.appendChild(tooltip);
+        }
+    }
 }
 
 async function updateUserStats() {
@@ -479,6 +502,15 @@ async function extractTextFromPdf(file) {
 function handleApiChoiceChange(event) {
     const useCustom = event.target.value === 'custom';
     appState.useCustomApi = useCustom;
+    
+    // Se l'utente è loggato, non permettere l'uso di API personalizzate
+    if (appState.user && useCustom) {
+        showError('Gli utenti loggati usano il sistema sicuro integrato. API personalizzata non necessaria.');
+        // Torna alla scelta default
+        document.querySelector('input[name="apiChoice"][value="default"]').checked = true;
+        appState.useCustomApi = false;
+        return;
+    }
     
     if (useCustom) {
         elements.customApiSection.classList.remove('hidden');
@@ -1012,9 +1044,18 @@ async function loadStudyModeData() {
             throw new Error('Nessuna flashcard salvata disponibile per questa modalità.');
         }
         
-        // Prendi il primo set disponibile
-        const firstSet = data[0];
-        const { data: setData, error: setError } = await FlashcardManager.getFlashcardSet(firstSet.id);
+        // Mostra selezione set se ci sono più set disponibili
+        let selectedSet;
+        if (data.length === 1) {
+            selectedSet = data[0];
+        } else {
+            selectedSet = await showSetSelectionModal(data);
+            if (!selectedSet) {
+                throw new Error('Nessun set selezionato.');
+            }
+        }
+        
+        const { data: setData, error: setError } = await FlashcardManager.getFlashcardSet(selectedSet.id);
         
         if (setError || !setData || !setData.flashcards || setData.flashcards.length === 0) {
             throw new Error('Nessuna flashcard disponibile nel set selezionato.');
@@ -1994,6 +2035,85 @@ function toggleTheme() {
     
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem(CONFIG.THEME_KEY, newTheme);
+}
+
+// Modal per selezione set di studio
+function showSetSelectionModal(sets) {
+    return new Promise((resolve) => {
+        // Crea il modal
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); display: flex; align-items: center;
+            justify-content: center; z-index: 1000;
+        `;
+        modal.innerHTML = `
+            <div class="modal-content" style="
+                background: var(--card-bg); border-radius: 12px; padding: 24px;
+                max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            ">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; color: var(--text-color);">Seleziona Set di Studio</h3>
+                    <button class="modal-close" style="
+                        background: none; border: none; font-size: 24px; cursor: pointer;
+                        color: var(--text-color); padding: 0; width: 30px; height: 30px;
+                    ">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="color: var(--text-color); margin-bottom: 16px;">Scegli quale set di flashcard vuoi studiare:</p>
+                    <div class="set-selection-list">
+                        ${sets.map(set => `
+                            <div class="set-option" style="
+                                border: 1px solid var(--border-color); border-radius: 8px;
+                                padding: 16px; margin-bottom: 12px; display: flex;
+                                justify-content: space-between; align-items: center;
+                                hover: background-color: var(--hover-bg);
+                            ">
+                                <div class="set-info">
+                                    <h4 style="margin: 0 0 4px 0; color: var(--text-color);">${set.name}</h4>
+                                    <p style="margin: 0 0 8px 0; color: var(--text-secondary); font-size: 14px;">${set.description || 'Nessuna descrizione'}</p>
+                                    <span style="font-size: 12px; color: var(--text-secondary);">${set.total_cards || 0} carte • ${set.subject || 'Generale'}</span>
+                                </div>
+                                <button class="select-set-btn" data-set-id="${set.id}" style="
+                                    background: var(--primary-color); color: white; border: none;
+                                    padding: 8px 16px; border-radius: 6px; cursor: pointer;
+                                    font-size: 14px; font-weight: 500;
+                                ">
+                                    Seleziona
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Event listeners
+        modal.querySelector('.modal-close').onclick = () => {
+            document.body.removeChild(modal);
+            resolve(null);
+        };
+        
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+                resolve(null);
+            }
+        };
+        
+        modal.querySelectorAll('.select-set-btn').forEach(btn => {
+            btn.onclick = () => {
+                const setId = btn.dataset.setId;
+                const selectedSet = sets.find(set => set.id === setId);
+                document.body.removeChild(modal);
+                resolve(selectedSet);
+            };
+        });
+    });
 }
 
 // Gestione errori globali

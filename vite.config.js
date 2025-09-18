@@ -18,15 +18,13 @@ export default defineConfig({
       output: {
         manualChunks: {
           // Separa Supabase in un chunk separato per il caching
-          supabase: ['@supabase/supabase-js'],
-          // Separa le librerie di grafici
-          charts: ['recharts']
+          supabase: ['@supabase/supabase-js']
         }
       }
     }
   },
   optimizeDeps: {
-    include: ['@supabase/supabase-js', 'recharts']
+    include: ['@supabase/supabase-js']
   },
   // Configurazione per il deployment
   base: './',

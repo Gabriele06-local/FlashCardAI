@@ -57,6 +57,7 @@ const elements = {
     logoutBtn: document.getElementById('logoutBtn'),
     userEmail: document.getElementById('userEmail'),
     userStats: document.getElementById('userStats'),
+    studyModeBtn: document.getElementById('studyModeBtn'),
     analyticsBtn: document.getElementById('analyticsBtn'),
     
     // Input
@@ -204,6 +205,7 @@ function setupEventListeners() {
     elements.loginBtn.addEventListener('click', handleLogin);
     elements.signupBtn.addEventListener('click', handleSignup);
     elements.logoutBtn.addEventListener('click', handleLogout);
+    elements.studyModeBtn.addEventListener('click', showStudyMode);
     elements.analyticsBtn.addEventListener('click', showAnalyticsDashboard);
     
     // Input text
@@ -312,6 +314,14 @@ function showLoginForm() {
     elements.userInfo.classList.add('hidden');
     appState.user = null;
     
+    // Nascondi pulsanti per utenti non loggati
+    elements.studyModeBtn.classList.add('hidden');
+    elements.analyticsBtn.classList.add('hidden');
+    
+    // Nascondi sezioni che richiedono autenticazione
+    elements.studySection.classList.add('hidden');
+    elements.analyticsSection.classList.add('hidden');
+    
     // Ripristina sezione API per utenti non loggati
     const apiSection = document.querySelector('.api-section');
     if (apiSection) {
@@ -330,6 +340,10 @@ function showUserInfo() {
     elements.userInfo.classList.remove('hidden');
     elements.userEmail.textContent = appState.user.email;
     updateUserStats();
+    
+    // Mostra pulsanti per utenti loggati
+    elements.studyModeBtn.classList.remove('hidden');
+    elements.analyticsBtn.classList.remove('hidden');
     
     // Nascondi sezione API personalizzata per utenti loggati
     const apiSection = document.querySelector('.api-section');
@@ -851,6 +865,7 @@ function renderSavedSets(sets) {
             </div>
             <div class="saved-set-actions">
                 <button class="btn-secondary" data-action="load" data-set-id="${set.id}">📖 Apri</button>
+                <button class="btn-primary" data-action="study" data-set-id="${set.id}">🎯 Studia</button>
                 <button class="btn-secondary" data-action="delete" data-set-id="${set.id}">🗑️ Elimina</button>
             </div>
         </div>
@@ -864,6 +879,50 @@ function renderSavedSets(sets) {
     elements.savedSetsGrid.querySelectorAll('[data-action="delete"]').forEach(btn => {
         btn.addEventListener('click', () => deleteSavedSet(btn.dataset.setId));
     });
+    
+    elements.savedSetsGrid.querySelectorAll('[data-action="study"]').forEach(btn => {
+        btn.addEventListener('click', () => startStudyFromSet(btn.dataset.setId));
+    });
+}
+
+// Avvia studio da un set salvato
+async function startStudyFromSet(setId) {
+    if (!appState.user) {
+        showError('Devi effettuare l\'accesso per usare la modalità studio.');
+        return;
+    }
+    
+    try {
+        showLoading(true, 'Caricamento modalità studio...');
+        
+        // Carica il set di flashcard
+        const { data: setData, error } = await FlashcardManager.getFlashcardSet(setId);
+        if (error || !setData || !setData.flashcards || setData.flashcards.length === 0) {
+            throw new Error('Impossibile caricare il set di flashcard.');
+        }
+        
+        // Imposta il set per lo studio
+        appState.selectedStudySet = setData;
+        appState.selectedStudySetId = setId;
+        
+        // Mostra la sezione studio
+        elements.studySection.classList.remove('hidden');
+        
+        // Scroll alla sezione studio
+        elements.studySection.scrollIntoView({ behavior: 'smooth' });
+        
+        // Nascondi altre sezioni per focus
+        elements.flashcardSection.classList.add('hidden');
+        elements.analyticsSection.classList.add('hidden');
+        
+        showSuccess(`Modalità studio avviata per "${setData.name}" con ${setData.flashcards.length} flashcard!`);
+        
+    } catch (error) {
+        console.error('Errore nell\'avvio dello studio:', error);
+        showError(handleSupabaseError(error));
+    } finally {
+        showLoading(false);
+    }
 }
 
 // Carica set salvato
@@ -1676,6 +1735,26 @@ async function handleStudyRating(quality) {
 }
 
 // Analytics Dashboard
+// Mostra modalità studio
+function showStudyMode() {
+    if (!appState.user) {
+        showError('Devi effettuare l\'accesso per usare la modalità studio.');
+        return;
+    }
+    
+    // Nascondi altre sezioni
+    elements.flashcardSection.classList.add('hidden');
+    elements.analyticsSection.classList.add('hidden');
+    
+    // Mostra sezione studio
+    elements.studySection.classList.remove('hidden');
+    
+    // Scroll alla sezione
+    elements.studySection.scrollIntoView({ behavior: 'smooth' });
+    
+    showSuccess('Modalità studio attivata! Seleziona una modalità per iniziare.');
+}
+
 function showAnalyticsDashboard() {
     if (!appState.user) {
         showError('Devi effettuare l\'accesso per visualizzare gli analytics.');

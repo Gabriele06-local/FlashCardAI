@@ -1665,13 +1665,12 @@ async function stopStudyMode() {
             const studyTime = Math.round((Date.now() - appState.studyStartTime) / 1000);
             const mode = appState.selectedStudyMode || 'spaced_repetition';
             
-            await AnalyticsManager.recordStudySession({
-                session_end: new Date().toISOString(),
-                cards_studied: appState.cardsStudiedToday,
-                correct_answers: appState.cardsStudiedToday, // Semplificato per ora
-                total_time_seconds: studyTime,
-                study_mode: mode
-            });
+            // Aggiorna analytics giornaliere invece di recordStudySession
+            await AnalyticsManager.updateDailyAnalytics(
+                appState.cardsStudiedToday,
+                appState.cardsStudiedToday, // Semplificato per ora
+                Math.round(studyTime / 60) // Converti in minuti
+            );
         } catch (error) {
             console.error('Errore nel salvataggio della sessione:', error);
         }
@@ -1747,14 +1746,19 @@ async function handleStudyRating(quality) {
         const responseTime = appState.studyStartTime ? 
             Math.round((Date.now() - appState.studyStartTime) / 1000) : null;
         
-        // Usa algoritmo ripetizione spaziata avanzato
-        const { error } = await SpacedRepetition.recordStudySession(card.card_id, quality, {
-            responseTime: responseTime,
-            mode: appState.selectedStudyMode || 'spaced_repetition',
-            deviceType: 'desktop'
-        });
-        
-        if (error) throw error;
+        // Usa algoritmo ripetizione spaziata avanzato (solo se card_id esiste)
+        if (card.card_id) {
+            const { error } = await SpacedRepetition.recordStudySession(card.card_id, quality, {
+                responseTime: responseTime,
+                mode: appState.selectedStudyMode || 'spaced_repetition',
+                deviceType: 'desktop'
+            });
+            
+            if (error) {
+                console.warn('Errore nel salvataggio sessione ripetizione spaziata:', error);
+                // Continua comunque con la logica normale
+            }
+        }
         
         appState.cardsStudiedToday++;
         appState.currentStudyIndex++;
@@ -1771,7 +1775,19 @@ async function handleStudyRating(quality) {
         updateStudyStats();
         
     } catch (error) {
-        showError(handleSupabaseError(error));
+        console.error('Errore nel rating della carta:', error);
+        showError('Errore nel salvataggio. Continua con la prossima carta.');
+        
+        // Continua comunque con la logica normale
+        appState.cardsStudiedToday++;
+        appState.currentStudyIndex++;
+        
+        if (appState.currentStudyIndex < appState.studyCards.length) {
+            showStudyCard();
+        } else {
+            showSuccess('Hai completato tutte le carte per oggi! 🎉');
+            stopStudyMode();
+        }
     }
 }
 

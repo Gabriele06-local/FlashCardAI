@@ -320,7 +320,7 @@ export class SpacedRepetition {
       newData = await this.calculateNext(quality, 0, 2.5, 1, userStats)
     }
 
-    // Salva o aggiorna la sessione di studio
+    // Salva o aggiorna la sessione di studio (solo colonne esistenti)
     const sessionRecord = {
       user_id: user.id,
       card_id: cardId,
@@ -329,10 +329,7 @@ export class SpacedRepetition {
       interval_days: newData.interval,
       next_review_date: newData.nextReview.toISOString().split('T')[0],
       repetitions: newData.repetitions,
-      studied_at: new Date().toISOString(),
-      response_time: sessionData.responseTime || null,
-      study_mode: sessionData.mode || 'spaced_repetition',
-      device_type: sessionData.deviceType || 'desktop'
+      studied_at: new Date().toISOString()
     }
 
     const { data, error } = await supabase
@@ -506,18 +503,61 @@ export class AnalyticsManager {
       })
 
       if (error) {
+        console.warn('Errore get_user_analytics, provo fallback:', error)
         // Fallback: usa funzione legacy se la nuova non esiste
         const { data: fallbackData, error: fallbackError } = await supabase.rpc('get_user_stats', {
           user_uuid: user.id
         })
+        
+        if (fallbackError) {
+          console.warn('Anche get_user_stats fallisce, uso query diretta:', fallbackError)
+          // Fallback finale: query diretta
+          return await this.getUserAnalyticsDirect(user.id)
+        }
         
         return { data: fallbackData, error: fallbackError }
       }
 
       return { data, error }
     } catch (error) {
-      console.warn('Errore nel caricamento analytics:', error)
+      console.warn('Errore nel caricamento analytics, uso fallback diretto:', error)
       // Restituisci dati di base se tutto fallisce
+      return await this.getUserAnalyticsDirect(user.id)
+    }
+  }
+
+  // Fallback diretto senza funzioni RPC
+  static async getUserAnalyticsDirect(userId) {
+    try {
+      // Query diretta per statistiche base
+      const { data: setsData, error: setsError } = await supabase
+        .from('flashcard_sets')
+        .select('id, total_cards, is_public')
+        .eq('user_id', userId)
+
+      if (setsError) {
+        throw setsError
+      }
+
+      const totalSets = setsData ? setsData.length : 0
+      const totalCards = setsData ? setsData.reduce((sum, set) => sum + (set.total_cards || 0), 0) : 0
+      const publicSets = setsData ? setsData.filter(set => set.is_public).length : 0
+
+      return {
+        data: {
+          total_sets: totalSets,
+          total_cards: totalCards,
+          study_streak: 0,
+          accuracy_rate: 0,
+          total_study_time: 0,
+          cards_due_today: 0,
+          weekly_progress: []
+        },
+        error: null
+      }
+    } catch (error) {
+      console.warn('Errore anche nel fallback diretto:', error)
+      // Ultimo fallback: dati vuoti
       return { 
         data: {
           total_sets: 0,

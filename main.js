@@ -1086,19 +1086,51 @@ async function startStudyMode() {
 async function loadStudyModeData() {
     if (appState.selectedStudyMode === 'spaced') {
         // Modalità ripetizione spaziata - usa dati dal database
-        const { data, error } = await AnalyticsManager.getCardsForReview();
-        
-        if (error) {
-            console.warn('Modalità studio non disponibile, database non configurato:', error);
-            throw new Error('Modalità studio non disponibile. Configura il database per abilitare la ripetizione spaziata.');
+        try {
+            const { data, error } = await SpacedRepetition.getCardsForReview();
+            
+            if (error) {
+                console.warn('Modalità ripetizione spaziata non disponibile, database non configurato:', error);
+                throw new Error('Modalità ripetizione spaziata non disponibile. Configura il database per abilitare questa funzionalità.');
+            }
+            
+            if (!data || data.length === 0) {
+                throw new Error('Nessuna carta da ripassare oggi! 🎉');
+            }
+            
+            appState.studyCards = data;
+            appState.currentStudyIndex = 0;
+        } catch (error) {
+            // Se la modalità ripetizione spaziata non è disponibile, usa le flashcard salvate come fallback
+            console.warn('Fallback a flashcard salvate per modalità ripetizione spaziata:', error);
+            const { data, error: fallbackError } = await FlashcardManager.getUserFlashcardSets();
+            
+            if (fallbackError || !data || data.length === 0) {
+                throw new Error('Nessuna flashcard disponibile per lo studio. Crea prima delle flashcard e salvale.');
+            }
+            
+            // Usa il primo set disponibile
+            const selectedSet = data[0];
+            const { data: setData, error: setError } = await FlashcardManager.getFlashcardSet(selectedSet.id);
+            
+            if (setError || !setData || !setData.flashcards || setData.flashcards.length === 0) {
+                throw new Error('Nessuna flashcard disponibile nel set selezionato.');
+            }
+            
+            // Converti al formato richiesto per la modalità ripetizione spaziata
+            appState.studyCards = setData.flashcards.map(card => ({
+                card_id: card.id,
+                question: card.question,
+                answer: card.answer,
+                difficulty: card.difficulty,
+                set_name: setData.name,
+                repetitions: 0,
+                ease_factor: 2.5,
+                interval_days: 1,
+                next_review_date: new Date().toISOString().split('T')[0]
+            }));
+            appState.currentStudyIndex = 0;
         }
-        
-        if (!data || data.length === 0) {
-            throw new Error('Nessuna carta da ripassare oggi! 🎉');
-        }
-        
-        appState.studyCards = data;
-        appState.currentStudyIndex = 0;
         
     } else {
         // Altre modalità - usa flashcard salvate
@@ -1130,12 +1162,21 @@ async function loadStudyModeData() {
         // Prepara dati per modalità specifiche
         switch (appState.selectedStudyMode) {
             case 'quiz':
+                if (flashcards.length < 4) {
+                    throw new Error('Quiz mode richiede almeno 4 flashcard per generare le opzioni multiple.');
+                }
                 appState.quizData = prepareQuizData(flashcards);
                 break;
             case 'matching':
+                if (flashcards.length < 2) {
+                    throw new Error('Matching mode richiede almeno 2 flashcard per creare le coppie.');
+                }
                 appState.matchingData = prepareMatchingData(flashcards);
                 break;
             case 'memory':
+                if (flashcards.length < 2) {
+                    throw new Error('Memory game richiede almeno 2 flashcard per creare le coppie.');
+                }
                 appState.memoryData = prepareMemoryData(flashcards);
                 break;
             case 'speed':

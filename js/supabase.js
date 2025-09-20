@@ -401,22 +401,36 @@ export class SpacedRepetition {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Utente non autenticato')
 
-    const today = new Date().toISOString().split('T')[0]
+    try {
+      // Prova prima con la funzione RPC se disponibile
+      const { data, error } = await supabase.rpc('get_cards_for_review', {
+        user_uuid: user.id
+      })
 
-    const { data, error } = await supabase
-      .from('study_sessions')
-      .select(`
-        *,
-        flashcards (
-          *,
-          flashcard_sets (*)
-        )
-      `)
-      .eq('user_id', user.id)
-      .lte('next_review_date', today)
-      .order('next_review_date', { ascending: true })
+      if (error) {
+        // Fallback: usa query diretta se la funzione non esiste
+        const today = new Date().toISOString().split('T')[0]
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('study_sessions')
+          .select(`
+            *,
+            flashcards (
+              *,
+              flashcard_sets (*)
+            )
+          `)
+          .eq('user_id', user.id)
+          .lte('next_review_date', today)
+          .order('next_review_date', { ascending: true })
 
-    return { data, error }
+        return { data: fallbackData, error: fallbackError }
+      }
+
+      return { data, error }
+    } catch (error) {
+      console.warn('Errore nel caricamento carte per ripasso:', error)
+      return { data: [], error }
+    }
   }
 }
 
@@ -484,12 +498,39 @@ export class AnalyticsManager {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Utente non autenticato')
 
-    const { data, error } = await supabase.rpc('get_user_analytics', {
-      user_uuid: user.id,
-      days_back: daysBack
-    })
+    try {
+      // Prova prima con la funzione RPC se disponibile
+      const { data, error } = await supabase.rpc('get_user_analytics', {
+        user_uuid: user.id,
+        days_back: daysBack
+      })
 
-    return { data, error }
+      if (error) {
+        // Fallback: usa funzione legacy se la nuova non esiste
+        const { data: fallbackData, error: fallbackError } = await supabase.rpc('get_user_stats', {
+          user_uuid: user.id
+        })
+        
+        return { data: fallbackData, error: fallbackError }
+      }
+
+      return { data, error }
+    } catch (error) {
+      console.warn('Errore nel caricamento analytics:', error)
+      // Restituisci dati di base se tutto fallisce
+      return { 
+        data: {
+          total_sets: 0,
+          total_cards: 0,
+          study_streak: 0,
+          accuracy_rate: 0,
+          total_study_time: 0,
+          cards_due_today: 0,
+          weekly_progress: []
+        }, 
+        error: null 
+      }
+    }
   }
 
   // recordStudySession rimossa - usa SpacedRepetition.recordStudySession invece
